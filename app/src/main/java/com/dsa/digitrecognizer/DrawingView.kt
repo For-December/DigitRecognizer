@@ -24,15 +24,7 @@ fun DrawingCanvas(
     modifier: Modifier = Modifier
 ) {
     var currentPath by remember { mutableStateOf<Path?>(null) }
-    var currentPaths by remember { mutableStateOf(paths) }
     var touchCount by remember { mutableIntStateOf(0) }
-
-    // Sync with external paths
-    LaunchedEffect(paths) {
-        if (paths.isEmpty()) {
-            currentPaths = emptyList()
-        }
-    }
 
     Canvas(
         modifier = modifier
@@ -53,12 +45,11 @@ fun DrawingCanvas(
                     },
                     onDragEnd = {
                         currentPath?.let { path ->
-                            val newPaths = currentPaths + PathWrapper(
+                            val newPaths = paths + PathWrapper(
                                 path = path,
                                 color = Color.Black,
                                 strokeWidth = 30f
                             )
-                            currentPaths = newPaths
                             onPathUpdate(newPaths)
                         }
                         currentPath = null
@@ -74,7 +65,7 @@ fun DrawingCanvas(
         drawRect(color = Color.White)
 
         // Draw saved paths
-        currentPaths.forEach { pathWrapper ->
+        paths.forEach { pathWrapper ->
             drawPath(
                 path = pathWrapper.path,
                 color = pathWrapper.color,
@@ -94,6 +85,8 @@ fun DrawingCanvas(
 }
 
 fun convertDrawingToBitmap(paths: List<PathWrapper>, width: Int = 280, height: Int = 280): Bitmap {
+    android.util.Log.d("DrawingView", "convertDrawingToBitmap: paths.size = ${paths.size}")
+
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = android.graphics.Canvas(bitmap)
 
@@ -119,6 +112,10 @@ fun convertDrawingToBitmap(paths: List<PathWrapper>, width: Int = 280, height: I
     val pixels = IntArray(width * height)
     bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
+    // Count black and white pixels for debugging
+    var blackPixels = 0
+    var whitePixels = 0
+
     for (i in pixels.indices) {
         val pixel = pixels[i]
         val r = android.graphics.Color.red(pixel)
@@ -128,8 +125,11 @@ fun convertDrawingToBitmap(paths: List<PathWrapper>, width: Int = 280, height: I
 
         // Binarization: if gray value > 220, set to white (255), else black (0)
         val binaryValue = if (gray > 220) 255 else 0
+        if (binaryValue == 0) blackPixels++ else whitePixels++
         pixels[i] = android.graphics.Color.rgb(binaryValue, binaryValue, binaryValue)
     }
+
+    android.util.Log.d("DrawingView", "Binarization: black=$blackPixels, white=$whitePixels, ratio=${blackPixels.toFloat()/(blackPixels+whitePixels)}")
 
     binarizedBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
     return binarizedBitmap

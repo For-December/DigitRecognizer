@@ -270,6 +270,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     isLoading = true
                     try {
                         val bitmap = if (selectedInputMethod == InputMethod.HANDWRITE) {
+                            android.util.Log.d("MainScreen", "Recognition started: paths.size = ${paths.size}")
                             if (paths.isEmpty()) {
                                 Toast.makeText(context, "请先绘制数字", Toast.LENGTH_SHORT).show()
                                 isLoading = false
@@ -284,6 +285,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             }
                         }
 
+                        android.util.Log.d("MainScreen", "Bitmap created: ${bitmap.width}x${bitmap.height}")
+
                         val result = if (selectedModelType == ModelType.LOCAL) {
                             viewModel.predictLocal(context, bitmap)
                         } else {
@@ -291,6 +294,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             viewModel.predictRemote(imageFile)
                         }
 
+                        android.util.Log.d("MainScreen", "Prediction result: digit=${result.digit}, confidence=${result.confidence}")
                         predictionResult = result
                         showResultDialog = true
                     } catch (e: Exception) {

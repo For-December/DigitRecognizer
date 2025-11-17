@@ -23,6 +23,16 @@
 ### 5. ✅ 二值化处理
 **实现**: 在 DrawingView 和 LocalModelPredictor 中都实现了二值化，阈值设置为 220。
 
+### 6. ✅ 第一次识别总是7的问题（最新修复）
+**问题**: 第一次不管画什么都识别为数字7，置信度18.16%，图片好像没传递
+**原因**: DrawingCanvas 维护了内部状态 `currentPaths`，与外部 `paths` 不同步
+**解决方法**: 
+- 移除内部状态，直接使用外部传入的 `paths` 参数
+- 添加详细的日志输出，方便调试
+- 确保显示的内容和识别的内容完全一致
+
+详细分析见: [FIRST_RECOGNITION_FIX.md](./FIRST_RECOGNITION_FIX.md)
+
 ## 关键改进
 
 ### 二值化算法
