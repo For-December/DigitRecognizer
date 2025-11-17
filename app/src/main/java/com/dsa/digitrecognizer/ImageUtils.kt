@@ -4,6 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.content.ContentValues
+import android.os.Build
+import android.provider.MediaStore
 import java.io.File
 import java.io.FileOutputStream
 
@@ -37,6 +40,40 @@ object ImageUtils {
             inputStream?.close()
             bitmap
         } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * 保存图片到相册（Pictures/DigitRecognizer 目录）
+     * 可以在相册中直接查看
+     */
+    fun saveBitmapToGallery(context: Context, bitmap: Bitmap, fileName: String): Uri? {
+        return try {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Pictures/DigitRecognizer")
+                }
+            }
+
+            val uri = context.contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                contentValues
+            )
+
+            uri?.let {
+                context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                }
+                android.util.Log.d("ImageUtils", "Saved to gallery: $fileName")
+            }
+
+            uri
+        } catch (e: Exception) {
+            android.util.Log.e("ImageUtils", "Failed to save to gallery", e)
             e.printStackTrace()
             null
         }

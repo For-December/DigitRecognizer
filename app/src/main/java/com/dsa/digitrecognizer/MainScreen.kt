@@ -322,9 +322,18 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         // 统一预处理：二值化
                         val processedBitmap = preprocessBitmap(bitmap, 220)
 
-                        // Save debug copy
-                        val debugFile = ImageUtils.saveBitmapToFile(context, processedBitmap, "debug_${System.currentTimeMillis()}.png")
-                        android.util.Log.d("MainScreen", "Debug bitmap saved to: ${debugFile.absolutePath}")
+                        // Save debug copy - 保存到内部缓存和相册
+                        val timestamp = System.currentTimeMillis()
+                        val debugFileName = "debug_$timestamp.png"
+                        val debugFile = ImageUtils.saveBitmapToFile(context, processedBitmap, debugFileName)
+                        android.util.Log.d("MainScreen", "Debug bitmap saved to cache: ${debugFile.absolutePath}")
+
+                        // 同时保存到相册方便查看
+                        val galleryUri = ImageUtils.saveBitmapToGallery(context, processedBitmap, debugFileName)
+                        if (galleryUri != null) {
+                            android.util.Log.d("MainScreen", "Debug bitmap also saved to gallery")
+                            Toast.makeText(context, "调试图片已保存到相册", Toast.LENGTH_SHORT).show()
+                        }
 
                         val result = if (selectedModelType == ModelType.LOCAL) {
                             viewModel.predictLocal(context, processedBitmap)
