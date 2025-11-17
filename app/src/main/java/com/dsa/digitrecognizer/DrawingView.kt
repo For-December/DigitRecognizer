@@ -32,6 +32,7 @@ fun DrawingCanvas(
 ) {
     var currentPath by remember { mutableStateOf<Path?>(null) }
     var touchCount by remember { mutableIntStateOf(0) }
+    var lastReportedSize by remember { mutableStateOf<Pair<Float, Float>?>(null) }
 
     Canvas(
         modifier = modifier
@@ -65,8 +66,12 @@ fun DrawingCanvas(
                 )
             }
     ) {
-        // Report canvas size
-        onCanvasSizeChanged(size.width, size.height)
+        // Report canvas size only when it changes
+        val currentSize = Pair(size.width, size.height)
+        if (lastReportedSize != currentSize) {
+            lastReportedSize = currentSize
+            onCanvasSizeChanged(size.width, size.height)
+        }
 
         // This will trigger recomposition
         touchCount.let { }
