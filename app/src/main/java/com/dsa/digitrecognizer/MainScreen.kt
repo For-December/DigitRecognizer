@@ -40,6 +40,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     var paths by remember { mutableStateOf<List<PathWrapper>>(emptyList()) }
     var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
     var predictionResult by remember { mutableStateOf<PredictionResult?>(null) }
+    var showResultDialog by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var photoUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -291,6 +292,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         }
 
                         predictionResult = result
+                        showResultDialog = true
                     } catch (e: Exception) {
                         Toast.makeText(context, "识别失败: ${e.message}", Toast.LENGTH_LONG).show()
                         e.printStackTrace()
@@ -312,68 +314,14 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                 Text("识别", fontSize = 18.sp)
             }
         }
+    }
 
-        // 结果显示
-        predictionResult?.let { result ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        "识别结果",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "${result.digit}",
-                        fontSize = 72.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1976D2)
-                    )
-                    Text(
-                        text = "置信度: %.2f%%".format(result.confidence),
-                        fontSize = 18.sp,
-                        color = Color(0xFF1565C0)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-                    HorizontalDivider()
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text("所有概率", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    result.probabilities.forEachIndexed { index, prob ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("数字 $index:", fontWeight = FontWeight.Medium)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                LinearProgressIndicator(
-                                    progress = prob / 100f,
-                                    modifier = Modifier
-                                        .width(150.dp)
-                                        .padding(end = 8.dp)
-                                )
-                                Text("%.2f%%".format(prob), fontSize = 12.sp)
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    // 结果对话框
+    if (showResultDialog && predictionResult != null) {
+        ResultDialog(
+            result = predictionResult!!,
+            onDismiss = { showResultDialog = false }
+        )
     }
 }
 
@@ -383,5 +331,92 @@ enum class InputMethod {
 
 enum class ModelType {
     LOCAL, REMOTE
+}
+
+@Composable
+fun ResultDialog(
+    result: PredictionResult,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "识别结果",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 主要结果
+                Text(
+                    text = "${result.digit}",
+                    fontSize = 80.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1976D2)
+                )
+                Text(
+                    text = "置信度: %.2f%%".format(result.confidence),
+                    fontSize = 18.sp,
+                    color = Color(0xFF1565C0),
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 所有概率
+                Text(
+                    "所有概率分布",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                result.probabilities.forEachIndexed { index, prob ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "数字 $index:",
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp,
+                            modifier = Modifier.width(60.dp)
+                        )
+                        LinearProgressIndicator(
+                            progress = { prob / 100f },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp),
+                        )
+                        Text(
+                            "%.1f%%".format(prob),
+                            fontSize = 12.sp,
+                            modifier = Modifier.width(50.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("确定", fontSize = 16.sp)
+            }
+        },
+        containerColor = Color.White,
+        shape = RoundedCornerShape(16.dp)
+    )
 }
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 允许特定域名/IP的CLEARTEXT通信 -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain> <!-- 允许模拟器本地映射地址 -->
+        <domain includeSubdomains="true">localhost</domain> <!-- 可选：允许本地localhost -->
+        <domain includeSubdomains="true">127.0.0.1</domain> <!-- 可选：允许本地回环地址 -->
+    </domain-config>
+</network-security-config>
