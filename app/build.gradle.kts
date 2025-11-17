@@ -68,6 +68,8 @@ dependencies {
     implementation("androidx.camera:camera-view:1.3.1")
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
+
+
     // 协程
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")

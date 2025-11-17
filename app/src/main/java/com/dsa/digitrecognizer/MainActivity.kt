@@ -13,6 +13,7 @@ import com.dsa.digitrecognizer.ui.theme.DigitRecognizerTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
         setContent {
             DigitRecognizerTheme {

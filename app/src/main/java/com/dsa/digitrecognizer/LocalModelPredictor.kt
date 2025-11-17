@@ -10,9 +10,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
-import androidx.core.graphics.scale
 
-class LocalModelPredictor(context: Context) {
+class LocalModelPredictor(private val context: Context) {
     private var interpreter: Interpreter? = null
     private var initError: String? = null
 
@@ -57,9 +56,23 @@ class LocalModelPredictor(context: Context) {
 
         Log.d(TAG, "开始识别，图片尺寸: ${bitmap.width}x${bitmap.height}")
 
-        // 缩放到28x28（图片已在MainScreen中二值化）
-        val resizedBitmap = bitmap.scale(28, 28)
+        // 使用高质量缩放到28x28（启用插值）
+        val resizedBitmap = resizeWithInterpolation(bitmap, 28, 28)
         Log.d(TAG, "图片已缩放到 28x28")
+
+        // 保存缩放后的图片到外部存储，方便调试查看
+        try {
+            val externalDebugFile = java.io.File(
+                context.getExternalFilesDir(null),
+                "debug_model_input_28x28_${System.currentTimeMillis()}.png"
+            )
+            java.io.FileOutputStream(externalDebugFile).use { fos ->
+                resizedBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+            Log.d(TAG, "已保存模型输入图片到: ${externalDebugFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "保存调试图片失败", e)
+        }
 
         val inputBuffer = preprocessImage(resizedBitmap)
         Log.d(TAG, "图片预处理完成，缓冲区大小: ${inputBuffer.capacity()}")
@@ -90,6 +103,69 @@ class LocalModelPredictor(context: Context) {
         )
     }
 
+    private fun resizeWithInterpolation(source: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
+        // Coil 对已有的 Bitmap 对象不进行缩放，直接使用降级方案
+        // 使用 Android 原生最高质量配置实现类似 LANCZOS 的效果
+        Log.d(TAG, "使用高质量缩放: ${source.width}x${source.height} -> ${targetWidth}x${targetHeight}")
+        return resizeFallback(source, targetWidth, targetHeight)
+    }
+
+    private fun resizeFallback(source: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
+        // 使用多步缩放策略模拟 LANCZOS 效果
+        // 策略：先缩小到中间尺寸（50%），再缩小到目标尺寸，减少细节丢失
+        val sourceWidth = source.width
+        val sourceHeight = source.height
+
+        // 如果原图尺寸不大，直接一步缩放
+        if (sourceWidth <= targetWidth * 2 && sourceHeight <= targetHeight * 2) {
+            return singleStepResize(source, targetWidth, targetHeight)
+        }
+
+        // 计算中间尺寸（保持宽高比，大约是目标尺寸的2倍）
+        val intermediateSize = maxOf(targetWidth, targetHeight) * 2
+        val intermediateWidth: Int
+        val intermediateHeight: Int
+
+        if (sourceWidth > sourceHeight) {
+            intermediateWidth = intermediateSize
+            intermediateHeight = (intermediateSize * sourceHeight) / sourceWidth
+        } else {
+            intermediateHeight = intermediateSize
+            intermediateWidth = (intermediateSize * sourceWidth) / sourceHeight
+        }
+
+        // 第一步：缩放到中间尺寸
+        val intermediateBitmap = singleStepResize(source, intermediateWidth, intermediateHeight)
+
+        // 第二步：缩放到目标尺寸
+        val result = singleStepResize(intermediateBitmap, targetWidth, targetHeight)
+
+        // 释放中间 bitmap
+        if (intermediateBitmap != source) {
+            intermediateBitmap.recycle()
+        }
+
+        Log.d(TAG, "多步缩放: ${sourceWidth}x${sourceHeight} -> ${intermediateWidth}x${intermediateHeight} -> ${targetWidth}x${targetHeight}")
+        return result
+    }
+
+    private fun singleStepResize(source: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {
+        // 单步高质量缩放
+        val result = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(result)
+
+        val paint = android.graphics.Paint().apply {
+            isFilterBitmap = true      // 启用双线性插值
+            isAntiAlias = true          // 启用抗锯齿
+            isDither = true             // 启用抖动
+        }
+
+        val srcRect = android.graphics.Rect(0, 0, source.width, source.height)
+        val dstRect = android.graphics.Rect(0, 0, targetWidth, targetHeight)
+        canvas.drawBitmap(source, srcRect, dstRect, paint)
+
+        return result
+    }
 
     private fun preprocessImage(bitmap: Bitmap): ByteBuffer {
         val inputBuffer = ByteBuffer.allocateDirect(4 * 28 * 28 * 1)
@@ -99,6 +175,9 @@ class LocalModelPredictor(context: Context) {
         bitmap.getPixels(intValues, 0, 28, 0, 0, 28, 28)
         val threshold = 220 // 与 Python 一致
 
+        var darkPixels = 0  // 统计暗色像素
+        val grayValues = mutableListOf<Float>()
+
         for (pixelValue in intValues) {
             // RGB → 灰度
             val r = Color.red(pixelValue)
@@ -106,12 +185,29 @@ class LocalModelPredictor(context: Context) {
             val b = Color.blue(pixelValue)
             val gray = (r + g + b) / 3.0f
 
-            // 新增二值化（与 Python 一致）
-            val binary = if (gray < threshold) 1.0f else 0.0f
+            grayValues.add(gray)
 
-            // 移除颜色反转（因为 Python 不反转）
+            // 二值化（与 Python 一致）
+            val binary = if (gray < threshold) {
+                darkPixels++
+                1.0f
+            } else {
+                0.0f
+            }
+
             inputBuffer.putFloat(binary)
         }
+
+        // 打印统计信息
+        val avgGray = grayValues.average()
+        val minGray = grayValues.minOrNull() ?: 0f
+        val maxGray = grayValues.maxOrNull() ?: 0f
+        Log.d(TAG, "灰度统计: min=${minGray.toInt()}, max=${maxGray.toInt()}, avg=${avgGray.toInt()}")
+        Log.d(TAG, "二值化结果: 暗色像素(1.0)=$darkPixels/784, 亮色像素(0.0)=${784 - darkPixels}/784")
+
+        // 打印前40个灰度值用于对比
+        val first40 = grayValues.take(40).joinToString(",") { it.toInt().toString() }
+        Log.d(TAG, "前40个灰度值: $first40")
 
         return inputBuffer
     }
