@@ -56,12 +56,8 @@ class LocalModelPredictor(context: Context) {
 
         Log.d(TAG, "开始识别，图片尺寸: ${bitmap.width}x${bitmap.height}")
 
-        // 先进行二值化处理
-        val binarizedBitmap = applyBinarization(bitmap, 220)
-        Log.d(TAG, "图片二值化完成，阈值: 220")
-
-        // 缩放到28x28
-        val resizedBitmap = Bitmap.createScaledBitmap(binarizedBitmap, 28, 28, true)
+        // 缩放到28x28（图片已在MainScreen中二值化）
+        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 28, 28, true)
         Log.d(TAG, "图片已缩放到 28x28")
 
         val inputBuffer = preprocessImage(resizedBitmap)
@@ -93,28 +89,6 @@ class LocalModelPredictor(context: Context) {
         )
     }
 
-    private fun applyBinarization(bitmap: Bitmap, threshold: Int = 220): Bitmap {
-        val width = bitmap.width
-        val height = bitmap.height
-        val binarizedBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val pixels = IntArray(width * height)
-        bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-        for (i in pixels.indices) {
-            val pixel = pixels[i]
-            val r = Color.red(pixel)
-            val g = Color.green(pixel)
-            val b = Color.blue(pixel)
-            val gray = (r + g + b) / 3
-
-            // Binarization: if gray value > threshold, set to white (255), else black (0)
-            val binaryValue = if (gray > threshold) 255 else 0
-            pixels[i] = Color.rgb(binaryValue, binaryValue, binaryValue)
-        }
-
-        binarizedBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-        return binarizedBitmap
-    }
 
     private fun preprocessImage(bitmap: Bitmap): ByteBuffer {
         val inputBuffer = ByteBuffer.allocateDirect(4 * 28 * 28 * 1)

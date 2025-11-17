@@ -29,6 +29,34 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import java.io.File
+import android.graphics.Color as AndroidColor
+
+// 统一的图片预处理函数
+fun preprocessBitmap(bitmap: Bitmap, threshold: Int = 220): Bitmap {
+    val width = bitmap.width
+    val height = bitmap.height
+    val processedBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val pixels = IntArray(width * height)
+    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+    var blackPixels = 0
+    for (i in pixels.indices) {
+        val pixel = pixels[i]
+        val r = AndroidColor.red(pixel)
+        val g = AndroidColor.green(pixel)
+        val b = AndroidColor.blue(pixel)
+        val gray = (r + g + b) / 3
+
+        // 二值化：灰度值 > 阈值设为白色(255)，否则设为黑色(0)
+        val binaryValue = if (gray > threshold) 255 else 0
+        if (binaryValue == 0) blackPixels++
+        pixels[i] = AndroidColor.rgb(binaryValue, binaryValue, binaryValue)
+    }
+
+    android.util.Log.d("MainScreen", "预处理完成: ${width}x${height}, 黑色像素: $blackPixels/${pixels.size}")
+    processedBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+    return processedBitmap
+}
 
 @Composable
 fun MainScreen(viewModel: MainViewModel = viewModel()) {
@@ -289,16 +317,19 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             }
                         }
 
-                        android.util.Log.d("MainScreen", "Bitmap created: ${bitmap.width}x${bitmap.height}")
+                        android.util.Log.d("MainScreen", "原始图片: ${bitmap.width}x${bitmap.height}")
+
+                        // 统一预处理：二值化
+                        val processedBitmap = preprocessBitmap(bitmap, 220)
 
                         // Save debug copy
-                        val debugFile = ImageUtils.saveBitmapToFile(context, bitmap, "debug_${System.currentTimeMillis()}.png")
+                        val debugFile = ImageUtils.saveBitmapToFile(context, processedBitmap, "debug_${System.currentTimeMillis()}.png")
                         android.util.Log.d("MainScreen", "Debug bitmap saved to: ${debugFile.absolutePath}")
 
                         val result = if (selectedModelType == ModelType.LOCAL) {
-                            viewModel.predictLocal(context, bitmap)
+                            viewModel.predictLocal(context, processedBitmap)
                         } else {
-                            val imageFile = ImageUtils.saveBitmapToFile(context, bitmap)
+                            val imageFile = ImageUtils.saveBitmapToFile(context, processedBitmap)
                             viewModel.predictRemote(imageFile)
                         }
 

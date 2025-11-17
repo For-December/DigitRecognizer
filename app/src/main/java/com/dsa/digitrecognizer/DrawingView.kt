@@ -140,31 +140,7 @@ fun convertDrawingToBitmap(
         canvas.drawPath(scaledPath, paint)
     }
 
-    // Apply binarization with threshold 220
-    val binarizedBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-    val pixels = IntArray(width * height)
-    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-    // Count black and white pixels for debugging
-    var blackPixels = 0
-    var whitePixels = 0
-
-    for (i in pixels.indices) {
-        val pixel = pixels[i]
-        val r = android.graphics.Color.red(pixel)
-        val g = android.graphics.Color.green(pixel)
-        val b = android.graphics.Color.blue(pixel)
-        val gray = (r + g + b) / 3
-
-        // Binarization: if gray value > 220, set to white (255), else black (0)
-        val binaryValue = if (gray > 220) 255 else 0
-        if (binaryValue == 0) blackPixels++ else whitePixels++
-        pixels[i] = android.graphics.Color.rgb(binaryValue, binaryValue, binaryValue)
-    }
-
-    android.util.Log.d("DrawingView", "Binarization: black=$blackPixels, white=$whitePixels, ratio=${blackPixels.toFloat()/(blackPixels+whitePixels)}")
-
-    binarizedBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-    return binarizedBitmap
+    android.util.Log.d("DrawingView", "Bitmap conversion complete")
+    return bitmap
 }
 
