@@ -11,8 +11,22 @@ object ImageUtils {
     fun saveBitmapToFile(context: Context, bitmap: Bitmap, fileName: String = "temp_image.jpg"): File {
         val file = File(context.cacheDir, fileName)
         FileOutputStream(file).use { out ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out)
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
+        android.util.Log.d("ImageUtils", "Saved bitmap to ${file.absolutePath}, size: ${file.length()} bytes")
+
+        // Log some pixel info to verify it's not blank
+        val pixels = IntArray(bitmap.width * bitmap.height)
+        bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+        val blackPixels = pixels.count {
+            val r = android.graphics.Color.red(it)
+            val g = android.graphics.Color.green(it)
+            val b = android.graphics.Color.blue(it)
+            val gray = (r + g + b) / 3
+            gray < 128
+        }
+        android.util.Log.d("ImageUtils", "Bitmap stats: ${bitmap.width}x${bitmap.height}, black pixels: $blackPixels/${pixels.size}")
+
         return file
     }
 

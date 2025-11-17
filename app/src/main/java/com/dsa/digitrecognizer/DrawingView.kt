@@ -17,10 +17,17 @@ data class PathWrapper(
     val strokeWidth: Float
 )
 
+data class DrawingData(
+    val paths: List<PathWrapper>,
+    val canvasWidth: Float,
+    val canvasHeight: Float
+)
+
 @Composable
 fun DrawingCanvas(
     paths: List<PathWrapper>,
     onPathUpdate: (List<PathWrapper>) -> Unit,
+    onCanvasSizeChanged: (Float, Float) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     var currentPath by remember { mutableStateOf<Path?>(null) }
@@ -58,6 +65,9 @@ fun DrawingCanvas(
                 )
             }
     ) {
+        // Report canvas size
+        onCanvasSizeChanged(size.width, size.height)
+
         // This will trigger recomposition
         touchCount.let { }
 
@@ -84,8 +94,14 @@ fun DrawingCanvas(
     }
 }
 
-fun convertDrawingToBitmap(paths: List<PathWrapper>, width: Int = 280, height: Int = 280): Bitmap {
-    android.util.Log.d("DrawingView", "convertDrawingToBitmap: paths.size = ${paths.size}")
+fun convertDrawingToBitmap(
+    paths: List<PathWrapper>,
+    canvasWidth: Float,
+    canvasHeight: Float,
+    width: Int = 280,
+    height: Int = 280
+): Bitmap {
+    android.util.Log.d("DrawingView", "convertDrawingToBitmap: paths.size = ${paths.size}, canvas=${canvasWidth}x${canvasHeight}, bitmap=${width}x${height}")
 
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = android.graphics.Canvas(bitmap)
@@ -93,7 +109,12 @@ fun convertDrawingToBitmap(paths: List<PathWrapper>, width: Int = 280, height: I
     // White background
     canvas.drawColor(android.graphics.Color.WHITE)
 
-    // Draw paths
+    // Calculate scale factors
+    val scaleX = width.toFloat() / canvasWidth
+    val scaleY = height.toFloat() / canvasHeight
+    android.util.Log.d("DrawingView", "Scale factors: scaleX=$scaleX, scaleY=$scaleY")
+
+    // Draw paths with scaling
     val paint = android.graphics.Paint().apply {
         style = android.graphics.Paint.Style.STROKE
         strokeCap = android.graphics.Paint.Cap.ROUND
@@ -103,8 +124,15 @@ fun convertDrawingToBitmap(paths: List<PathWrapper>, width: Int = 280, height: I
 
     paths.forEach { pathWrapper ->
         paint.color = pathWrapper.color.toArgb()
-        paint.strokeWidth = pathWrapper.strokeWidth
-        canvas.drawPath(pathWrapper.path.asAndroidPath(), paint)
+        paint.strokeWidth = pathWrapper.strokeWidth * scaleX // Scale stroke width too
+
+        // Create a scaled path
+        val scaledPath = android.graphics.Path(pathWrapper.path.asAndroidPath())
+        val matrix = android.graphics.Matrix()
+        matrix.setScale(scaleX, scaleY)
+        scaledPath.transform(matrix)
+
+        canvas.drawPath(scaledPath, paint)
     }
 
     // Apply binarization with threshold 220

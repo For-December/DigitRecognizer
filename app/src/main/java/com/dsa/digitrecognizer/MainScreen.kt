@@ -38,6 +38,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
     var selectedInputMethod by remember { mutableStateOf<InputMethod>(InputMethod.HANDWRITE) }
     var selectedModelType by remember { mutableStateOf<ModelType>(ModelType.LOCAL) }
     var paths by remember { mutableStateOf<List<PathWrapper>>(emptyList()) }
+    var canvasSize by remember { mutableStateOf(Pair(1f, 1f)) }
     var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
     var predictionResult by remember { mutableStateOf<PredictionResult?>(null) }
     var showResultDialog by remember { mutableStateOf(false) }
@@ -185,6 +186,9 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                             onPathUpdate = {
                                 paths = it
                                 predictionResult = null
+                            },
+                            onCanvasSizeChanged = { width, height ->
+                                canvasSize = Pair(width, height)
                             }
                         )
                     }
@@ -276,7 +280,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                                 isLoading = false
                                 return@launch
                             }
-                            convertDrawingToBitmap(paths)
+                            convertDrawingToBitmap(paths, canvasSize.first, canvasSize.second)
                         } else {
                             selectedImage ?: run {
                                 Toast.makeText(context, "请先选择图片", Toast.LENGTH_SHORT).show()
@@ -286,6 +290,10 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         }
 
                         android.util.Log.d("MainScreen", "Bitmap created: ${bitmap.width}x${bitmap.height}")
+
+                        // Save debug copy
+                        val debugFile = ImageUtils.saveBitmapToFile(context, bitmap, "debug_${System.currentTimeMillis()}.png")
+                        android.util.Log.d("MainScreen", "Debug bitmap saved to: ${debugFile.absolutePath}")
 
                         val result = if (selectedModelType == ModelType.LOCAL) {
                             viewModel.predictLocal(context, bitmap)
