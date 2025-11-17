@@ -10,6 +10,7 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
+import androidx.core.graphics.scale
 
 class LocalModelPredictor(context: Context) {
     private var interpreter: Interpreter? = null
@@ -57,7 +58,7 @@ class LocalModelPredictor(context: Context) {
         Log.d(TAG, "开始识别，图片尺寸: ${bitmap.width}x${bitmap.height}")
 
         // 缩放到28x28（图片已在MainScreen中二值化）
-        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 28, 28, true)
+        val resizedBitmap = bitmap.scale(28, 28)
         Log.d(TAG, "图片已缩放到 28x28")
 
         val inputBuffer = preprocessImage(resizedBitmap)
@@ -96,22 +97,24 @@ class LocalModelPredictor(context: Context) {
 
         val intValues = IntArray(28 * 28)
         bitmap.getPixels(intValues, 0, 28, 0, 0, 28, 28)
+        val threshold = 220 // 与 Python 一致
 
         for (pixelValue in intValues) {
-            // 将RGB转换为灰度，然后归一化到[0,1]
+            // RGB → 灰度
             val r = Color.red(pixelValue)
             val g = Color.green(pixelValue)
             val b = Color.blue(pixelValue)
-            val gray = (r + g + b) / 3.0f / 255.0f
+            val gray = (r + g + b) / 3.0f
 
-            // 反转颜色（黑底白字 -> 白底黑字）
-            val normalized = 1.0f - gray
-            inputBuffer.putFloat(normalized)
+            // 新增二值化（与 Python 一致）
+            val binary = if (gray < threshold) 1.0f else 0.0f
+
+            // 移除颜色反转（因为 Python 不反转）
+            inputBuffer.putFloat(binary)
         }
 
         return inputBuffer
     }
-
     fun close() {
         interpreter?.close()
     }
