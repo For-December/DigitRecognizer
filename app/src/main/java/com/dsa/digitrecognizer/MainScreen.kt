@@ -322,13 +322,10 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                         // 统一预处理：二值化
                         val processedBitmap = preprocessBitmap(bitmap, 220)
 
-                        // Save debug copy to internal cache
-                        val debugFile = ImageUtils.saveBitmapToFile(context, processedBitmap, "debug_${System.currentTimeMillis()}.png")
-                        android.util.Log.d("MainScreen", "Debug bitmap saved to: ${debugFile.absolutePath}")
-
                         val result = if (selectedModelType == ModelType.LOCAL) {
                             viewModel.predictLocal(context, processedBitmap)
                         } else {
+                            // 远程 API 需要保存临时文件
                             val imageFile = ImageUtils.saveBitmapToFile(context, processedBitmap)
                             viewModel.predictRemote(imageFile)
                         }

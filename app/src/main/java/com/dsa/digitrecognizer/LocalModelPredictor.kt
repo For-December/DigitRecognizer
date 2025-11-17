@@ -60,19 +60,6 @@ class LocalModelPredictor(private val context: Context) {
         val resizedBitmap = resizeWithInterpolation(bitmap, 28, 28)
         Log.d(TAG, "图片已缩放到 28x28")
 
-        // 保存缩放后的图片到外部存储，方便调试查看
-        try {
-            val externalDebugFile = java.io.File(
-                context.getExternalFilesDir(null),
-                "debug_model_input_28x28_${System.currentTimeMillis()}.png"
-            )
-            java.io.FileOutputStream(externalDebugFile).use { fos ->
-                resizedBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
-            }
-            Log.d(TAG, "已保存模型输入图片到: ${externalDebugFile.absolutePath}")
-        } catch (e: Exception) {
-            Log.e(TAG, "保存调试图片失败", e)
-        }
 
         val inputBuffer = preprocessImage(resizedBitmap)
         Log.d(TAG, "图片预处理完成，缓冲区大小: ${inputBuffer.capacity()}")
@@ -206,8 +193,8 @@ class LocalModelPredictor(private val context: Context) {
         Log.d(TAG, "二值化结果: 暗色像素(1.0)=$darkPixels/784, 亮色像素(0.0)=${784 - darkPixels}/784")
 
         // 打印前40个灰度值用于对比
-        val first40 = grayValues.take(40).joinToString(",") { it.toInt().toString() }
-        Log.d(TAG, "前40个灰度值: $first40")
+//        val first40 = grayValues.take(40).joinToString(",") { it.toInt().toString() }
+//        Log.d(TAG, "前40个灰度值: $first40")
 
         return inputBuffer
     }
