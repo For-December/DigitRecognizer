@@ -59,6 +59,7 @@ class LocalModelPredictor(private val context: Context) {
         // 使用高质量缩放到28x28（启用插值）
         val resizedBitmap = resizeWithInterpolation(bitmap, 28, 28)
         Log.d(TAG, "图片已缩放到 28x28")
+//         debugSave(resizedBitmap)
 
 
         val inputBuffer = preprocessImage(resizedBitmap)
@@ -88,6 +89,22 @@ class LocalModelPredictor(private val context: Context) {
             confidence = confidence,
             probabilities = probabilities
         )
+    }
+
+    fun debugSave(resizedBitmap : Bitmap) {
+        // 保存缩放后的图片到外部存储，方便调试查看
+        try {
+            val externalDebugFile = java.io.File(
+                context.getExternalFilesDir(null),
+                "debug_model_input_28x28_${System.currentTimeMillis()}.png"
+            )
+            java.io.FileOutputStream(externalDebugFile).use { fos ->
+                resizedBitmap.compress(Bitmap.CompressFormat.PNG, 100, fos)
+            }
+            Log.d(TAG, "已保存模型输入图片到: ${externalDebugFile.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "保存调试图片失败", e)
+        }
     }
 
     private fun resizeWithInterpolation(source: Bitmap, targetWidth: Int, targetHeight: Int): Bitmap {

@@ -63,6 +63,7 @@ app/src/main/assets/digit_recognition_model.tflite
 每次缩放通过在目标 Bitmap 上用 Canvas.drawBitmap(..., Paint)（isFilterBitmap=true，
 即系统滤波，通常是双线性）进行插值，最后返回 28×28 的 Bitmap。
 
+目前的问题是 Android 原生没有直接支持 Lanczos 的 API，缩放清晰度不如python
 ## 项目结构（重要文件）
 
 ```
@@ -111,23 +112,9 @@ app/src/main/java/com/dsa/digitrecognizer/
 
 - 图像预处理与插值算法（Lanczos）对模型表现的影响
 - TFLite 模型的输入/量化/兼容性问题与运行时选择
-- 在 Android 上做高质量图像处理（OpenCV 集成）
 - 手写画布实现要点：多路径累积、平滑采样、触摸事件节流
 - 性能优化：在后台线程加载与执行 Interpreter；考虑 NNAPI/GPU Delegate
 - 可复现性：如何使本地推理与训练/服务器端保持一致（导出中间张量做对比）
-
-## 常见日志与含义（示例）
-
-- TensorFlow Lite op 不匹配："Didn't find op for builtin opcode 'FULLY_CONNECTED' version '12'" → 说明运行时不支持该 op 版本
-- 图像统计日志：`avgGray=247, 暗色像素(<220)=2107/51788` → 用于判断图像是否为浅色背景/深色笔迹
-- 保存的调试图路径：默认调试情况下会写入应用缓存目录，生产环境默认关闭
-
-## 未来改进（候选项）
-
-- 在 DrawingView 中加入压力/速度感知（模拟笔宽）并做平滑处理
-- 增加自适应二值化（如 Otsu 或局部阈值）以提高对复杂照片的鲁棒性
-- 集成 OpenCV 做高质量缩放与透视矫正
-- 添加模型热插拔与在线更新机制（仅限模型文件替换）
 
 ## 许可证与来源
 
