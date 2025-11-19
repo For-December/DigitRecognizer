@@ -11,7 +11,7 @@
 ## 功能特性
 
 - 本地 TFLite 模型离线推理（首要）
-- 可选远端 API（作为黑盒调用）
+- 可选远端 API
 - 输入方式：手写画布（DrawingView）、相机拍照、相册选择
 - 显示结果：识别数字、置信度、10 类概率分布
 
@@ -23,13 +23,13 @@
 app/src/main/assets/digit_recognition_model.tflite
 ```
 
-2. 构建与安装（在项目根目录运行或在 Android Studio 中运行）：
-
-```
+2. 构建与安装（在项目根目录运行）：
+```shell
 ./gradlew clean
 ./gradlew build
 ./gradlew installDebug
 ```
+（如果是 Android Studio，直接到 MainActivity 里点击运行即可。）
 
 3. 运行应用，选择「本地模型」并通过手写/拍照/相册输入图片进行识别。
 
@@ -48,23 +48,20 @@ app/src/main/assets/digit_recognition_model.tflite
 
 1. 读取原始图像（来自手写画布/相机/相册）为 Bitmap
 2. 转为灰度（single channel）
-3. 二值化（可选）：可在缩放前或缩放后进行，推荐阈值示例：220（取决于图像亮度）
-4. 反色（如训练集为白底黑字而当前为黑底白字需反转）
-5. 高质量缩放到 28×28：**使用 Lanczos 插值（与 PIL 的 LANCZOS 等价）**，这能在缩小图像时保持线条的连续性和平滑边缘，避免“虚线/断笔”问题
-6. 归一化：若模型为 float32，将像素值映射到 [0,1]；若为 uint8，按模型要求转换
+3. 高质量缩放到 28×28：**使用 Lanczos 插值（与 PIL 的 LANCZOS 等价）**，这能在缩小图像时保持线条的连续性和平滑边缘，避免“虚线/断笔”问题
+4. 二值化：在缩放后进行，阈值：220（取决于图像亮度）
+5. 反色（如训练集为白底黑字而当前为黑底白字需反转） 
+6. 归一化：若模型为 float32，将像素值映射到 [0,1]；若为 uint8，按模型要求转换 
 7. 转换为 ByteBuffer 或张量并传入 TFLite Interpreter
 
 为什么要用 Lanczos？
 - Lanczos 是适合图像缩小的高质量插值，能用周围多个像素做加权平均，保留线条连续性和灰度过渡；如果使用最近邻或低质量缩放，会导致边缘锯齿或断裂，从而极大影响识别结果。
 
-在 Android 上实现高质量缩放的建议：
-- 推荐使用 OpenCV Android（Imgproc.resize + INTER_LANCZOS4）来保证与服务器端 PIL.LANCZOS 的行为更接近
-- 如果不想引入 OpenCV，也可使用高质量的第三方图片处理库或确保缩放时使用带滤镜的插值（但要验证和服务器端的数值一致性）
-
-## 已实现的（和已移除的）行为
-
-- 已移除多余的临时文件保存逻辑：常规推理路径不会把中间图像保存到磁盘，所有预处理与 ByteBuffer 转换均在内存完成以提升性能并减少权限/清理负担
-- 在调试模式下，可临时开启“保存中间图像”选项以便人工对比（建议仅在本地调试使用，默认关闭）
+在 Android 的缩放方式：
+先在 resizeWithInterpolation 调用 resizeFallback，
+当原图较大时先缩到一个中间尺寸再缩到 28×28（多步缩放），
+每次缩放通过在目标 Bitmap 上用 Canvas.drawBitmap(..., Paint)（isFilterBitmap=true，
+即系统滤波，通常是双线性）进行插值，最后返回 28×28 的 Bitmap。
 
 ## 项目结构（重要文件）
 
@@ -136,6 +133,3 @@ app/src/main/java/com/dsa/digitrecognizer/
 
 - 本项目代码用于学习与演示，请在商用或分发前确认模型与第三方库的许可证
 
----
-
-如果你希望我把 README 翻译成英文、增加截图、或直接把临时调试功能（开关）从代码里实现并添加到 README 的“如何开启调试”一节，我可以接着修改并在代码中实现该开关（并运行基本验证）。
