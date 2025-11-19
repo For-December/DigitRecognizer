@@ -61,7 +61,7 @@ class LocalModelPredictor(private val context: Context) {
         Log.d(TAG, "图片已缩放到 28x28")
 //         debugSave(resizedBitmap)
 
-
+        // 缩放完再二值化一下
         val inputBuffer = preprocessImage(resizedBitmap)
         Log.d(TAG, "图片预处理完成，缓冲区大小: ${inputBuffer.capacity()}")
 
