@@ -118,5 +118,5 @@ python api_server.py
 
 ---
 
-**需要更多帮助？** 查看完整的 [README.md](README.md)
+**需要更多帮助？** 查看完整的 [README.md](../README.md)
 

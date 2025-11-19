@@ -31,7 +31,7 @@
 - 添加详细的日志输出，方便调试
 - 确保显示的内容和识别的内容完全一致
 
-详细分析见: [FIRST_RECOGNITION_FIX.md](./FIRST_RECOGNITION_FIX.md)
+详细分析见: [FIRST_RECOGNITION_FIX.md](FIRST_RECOGNITION_FIX.md)
 
 ## 关键改进
 
