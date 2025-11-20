@@ -22,7 +22,7 @@ data class PathWrapper(
 @Composable
 fun DrawingCanvas(
     paths: List<PathWrapper>,
-    onPathsChanged: (List<PathWrapper>) -> Unit,
+    onAddStroke: (PathWrapper) -> Unit,
     modifier: Modifier = Modifier,
     onCanvasSizeChanged: (Float, Float) -> Unit = { _, _ -> }
 ) {
@@ -30,20 +30,8 @@ fun DrawingCanvas(
     var touchCount by remember { mutableIntStateOf(0) }
     var lastReportedSize by remember { mutableStateOf<Pair<Float, Float>?>(null) }
 
-    // Internal mutable list for reliable drawing
-    val internalPaths = remember { mutableStateListOf<PathWrapper>() }
-
-    // When parent `paths` changes (external clear/restore), sync internalPaths
-    LaunchedEffect(paths) {
-        if (paths != internalPaths.toList()) {
-            android.util.Log.d("DrawingView", "Syncing internalPaths from parent: parent=${paths.size}, internal=${internalPaths.size}")
-            internalPaths.clear()
-            internalPaths.addAll(paths)
-        }
-    }
-
-    // latest callbacks/values for pointerInput
-    val latestOnPathsChanged = rememberUpdatedState(onPathsChanged)
+    // latest callback reference for pointerInput
+    val latestOnAddStroke = rememberUpdatedState(onAddStroke)
 
     Canvas(
         modifier = modifier
@@ -63,10 +51,8 @@ fun DrawingCanvas(
                     onDragEnd = {
                         if (currentPoints.isNotEmpty()) {
                             val stroke = PathWrapper(points = currentPoints, color = Color.Black, strokeWidth = 30f)
-                            internalPaths.add(stroke)
-                            android.util.Log.d("DrawingView", "Added stroke, internalPaths.size=${internalPaths.size}")
-                            // notify parent with authoritative list
-                            latestOnPathsChanged.value(internalPaths.toList())
+                            android.util.Log.d("DrawingView", "onDragEnd: adding stroke with ${currentPoints.size} points")
+                            latestOnAddStroke.value(stroke)
                         }
                         currentPoints = emptyList()
                         touchCount++
@@ -87,7 +73,7 @@ fun DrawingCanvas(
         // Draw white background
         drawRect(color = Color.White)
 
-        // Build smoothed Path
+        // Helper to create a smooth Compose Path from point list using quadratic smoothing
         fun buildSmoothPathFromPoints(pts: List<Offset>): Path {
             val p = Path()
             if (pts.isEmpty()) return p
@@ -109,16 +95,24 @@ fun DrawingCanvas(
             return p
         }
 
-        // Draw saved paths from internalPaths
-        internalPaths.forEach { pw ->
-            val p = buildSmoothPathFromPoints(pw.points)
-            drawPath(p, color = pw.color, style = Stroke(width = pw.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        // Draw saved paths (directly from parent state)
+        paths.forEach { pathWrapper ->
+            val p = buildSmoothPathFromPoints(pathWrapper.points)
+            drawPath(
+                path = p,
+                color = pathWrapper.color,
+                style = Stroke(width = pathWrapper.strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
         }
 
-        // Draw current in-progress stroke
+        // Draw current path being drawn (smoothed)
         if (currentPoints.isNotEmpty()) {
             val p = buildSmoothPathFromPoints(currentPoints)
-            drawPath(p, color = Color.Black, style = Stroke(width = 30f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(
+                path = p,
+                color = Color.Black,
+                style = Stroke(width = 30f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
         }
     }
 }

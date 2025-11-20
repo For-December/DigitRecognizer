@@ -211,8 +211,8 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     ) {
                         DrawingCanvas(
                             paths = paths,
-                            onPathsChanged = {
-                                paths = it
+                            onAddStroke = { stroke ->
+                                paths = paths + stroke
                                 predictionResult = null
                             },
                             onCanvasSizeChanged = { width, height ->
