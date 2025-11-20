@@ -211,7 +211,7 @@ fun MainScreen(viewModel: MainViewModel = viewModel()) {
                     ) {
                         DrawingCanvas(
                             paths = paths,
-                            onPathUpdate = {
+                            onPathsChanged = {
                                 paths = it
                                 predictionResult = null
                             },
@@ -459,4 +459,3 @@ fun ResultDialog(
         shape = RoundedCornerShape(16.dp)
     )
 }
-
