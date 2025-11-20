@@ -30,12 +30,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import java.io.File
 import android.graphics.Color as AndroidColor
+import androidx.core.graphics.createBitmap
 
-// 统一的图片预处理函数
+// uniform preprocessing: binarization
 fun preprocessBitmap(bitmap: Bitmap, threshold: Int = 220): Bitmap {
     val width = bitmap.width
     val height = bitmap.height
-    val processedBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val processedBitmap = createBitmap(width, height)
     val pixels = IntArray(width * height)
     bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
 
@@ -47,13 +48,13 @@ fun preprocessBitmap(bitmap: Bitmap, threshold: Int = 220): Bitmap {
         val b = AndroidColor.blue(pixel)
         val gray = (r + g + b) / 3
 
-        // 二值化：灰度值 > 阈值设为白色(255)，否则设为黑色(0)
+        // binarization: gray > threshold -> white(255), else black(0)
         val binaryValue = if (gray > threshold) 255 else 0
         if (binaryValue == 0) blackPixels++
         pixels[i] = AndroidColor.rgb(binaryValue, binaryValue, binaryValue)
     }
 
-    android.util.Log.d("MainScreen", "预处理完成: ${width}x${height}, 黑色像素: $blackPixels/${pixels.size}")
+    android.util.Log.d("MainScreen", "preprocess finished: ${width}x${height}, black pixels: $blackPixels/${pixels.size}")
     processedBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
     return processedBitmap
 }
